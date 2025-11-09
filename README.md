@@ -8,7 +8,7 @@ This plugin extends SBT standard output with service messages that GitHub Action
 Add the following to your project/plugins.sbt file:
 
 ```scala
-addSbtPlugin("com.github.sideeffffect" % "sbt-github-actions-logger" % "1.1.0")
+addSbtPlugin("com.github.sideeffffect" % "sbt-github-actions-logger" % "0.1.1")
 ```
 
 or register plugin as a global plugin for your SBT according to [SBT documentation](http://www.scala-sbt.org/0.13.0/docs/Getting-Started/Using-Plugins)
