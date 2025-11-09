@@ -1,7 +1,5 @@
 
-[![official JetBrains project](http://jb.gg/badges/official-plastic.svg)](https://confluence.jetbrains.com/display/ALL/JetBrains+on+GitHub)
-
-SBT TeamCity logger
+SBT GitHub Actions logger
 =============
 
 This plugin extends SBT standard output with service messages that TeamCity build server uses to present build results.
