@@ -32,11 +32,11 @@ object apiAdapter {
   def projectScope(project: Reference): Scope = Scope(Select(project), Zero, Zero, Zero)
 
   def extraLogger(
-      tcLoggers: mutable.Map[String, GHALogger],
-      tcLogAppender: GHALogAppender,
+      ghaLoggers: mutable.Map[String, GHALogger],
+      ghaLogAppender: GHALogAppender,
       scope: String,
   ): ExtraLogger = {
-    val appender = new GHALoggerAppender(tcLogAppender, scope)
+    val appender = new GHALoggerAppender(ghaLogAppender, scope)
     appender.start()
     appender
   }
