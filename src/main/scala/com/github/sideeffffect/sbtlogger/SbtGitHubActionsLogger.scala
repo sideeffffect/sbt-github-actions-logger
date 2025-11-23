@@ -58,27 +58,27 @@ object SbtGitHubActionsLogger extends AutoPlugin with (State => State) {
   private def reapply(session: SessionSettings, s: State): State =
     BuiltinCommands.reapply(session, Project.structure(s), s)
 
-  lazy val tcLogAppender = new GHALogAppender()
-  lazy val tcLoggers: mutable.Map[String, GHALogger] = collection.mutable.Map[String, GHALogger]()
-  lazy val tcTestListener = new GHAReportListener(tcLogAppender)
+  lazy val ghaLogAppender = new GHALogAppender()
+  lazy val ghaLoggers: mutable.Map[String, GHALogger] = collection.mutable.Map[String, GHALogger]()
+  lazy val ghaTestListener = new GHAReportListener(ghaLogAppender)
   lazy val startCompilationLogger: TaskKey[Unit] = TaskKey[Unit]("start-compilation-logger", "runs before compile")
   lazy val startTestCompilationLogger: TaskKey[Unit] =
     TaskKey[Unit]("start-test-compilation-logger", "runs before compile in test")
   lazy val endCompilationLogger: TaskKey[Unit] = TaskKey[Unit]("end-compilation-logger", "runs after compile")
   lazy val endTestCompilationLogger: TaskKey[Unit] =
     TaskKey[Unit]("end-test-compilation-logger", "runs after compile in test")
-  lazy val tcEndCompilation: TaskKey[Unit] = TaskKey[Unit]("gha-end-compilation", "")
-  lazy val tcEndTestCompilation: TaskKey[Unit] = TaskKey[Unit]("gha-end-test-compilation", "")
+  lazy val ghaEndCompilation: TaskKey[Unit] = TaskKey[Unit]("gha-end-compilation", "")
+  lazy val ghaEndTestCompilation: TaskKey[Unit] = TaskKey[Unit]("gha-end-test-compilation", "")
 
-  val tcVersion: Option[String] = sys.env.get("GITHUB_ACTION")
-  val tcFound: Boolean = tcVersion.isDefined
+  val ghaVersion: Option[String] = sys.env.get("GITHUB_ACTION")
+  val ghaFound: Boolean = ghaVersion.isDefined
 
   val GHA_LOGGER_PROPERTY_NAME = "GITHUB_ACTIONS_SBT_LOGGER_VERSION"
 
-  val tcLoggerVersion: String = System.getProperty(GHA_LOGGER_PROPERTY_NAME)
-  if (tcLoggerVersion == null) {
+  val ghaLoggerVersion: String = System.getProperty(GHA_LOGGER_PROPERTY_NAME)
+  if (ghaLoggerVersion == null) {
     System.setProperty(GHA_LOGGER_PROPERTY_NAME, "loaded")
-  } else if (tcLoggerVersion == "loaded") {
+  } else if (ghaLoggerVersion == "loaded") {
     System.setProperty(GHA_LOGGER_PROPERTY_NAME, "reloaded")
   }
 
@@ -95,7 +95,7 @@ object SbtGitHubActionsLogger extends AutoPlugin with (State => State) {
 
   // noinspection TypeAnnotation,ConvertExpressionToSAM
   override lazy val projectSettings =
-    if (tcFound && testResultLoggerFound)
+    if (ghaFound && testResultLoggerFound)
       loggerOnSettings ++ Seq(
         testResultLogger in (Test, test) := new TestResultLogger {
 
@@ -108,46 +108,46 @@ object SbtGitHubActionsLogger extends AutoPlugin with (State => State) {
           }
         },
       )
-    else if (tcFound) loggerOnSettings
+    else if (ghaFound) loggerOnSettings
     else loggerOffSettings
 
   lazy val loggerOnSettings: Seq[Def.Setting[_]] = Seq(
-    commands += tcLoggerStatusCommand,
+    commands += ghaLoggerStatusCommand,
     extraLoggers := {
       val currentFunction: Def.ScopedKey[_] => Seq[ExtraLogger] = extraLoggers.value
       key: ScopedKey[_] => {
         val scope: String = getScopeId(key.scope.project)
-        val logger: ExtraLogger = extraLogger(tcLoggers, tcLogAppender, scope)
+        val logger: ExtraLogger = extraLogger(ghaLoggers, ghaLogAppender, scope)
 
         logger +: currentFunction(key)
       }
     },
-    testListeners += tcTestListener,
-    startCompilationLogger := tcLogAppender.compilationBlockStart(getScopeId(streams.value.key.scope.project)),
-    startTestCompilationLogger := tcLogAppender.compilationTestBlockStart(getScopeId(streams.value.key.scope.project)),
-    endCompilationLogger := tcLogAppender.compilationBlockEnd(getScopeId(streams.value.key.scope.project)),
-    endTestCompilationLogger := tcLogAppender.compilationTestBlockEnd(getScopeId(streams.value.key.scope.project)),
+    testListeners += ghaTestListener,
+    startCompilationLogger := ghaLogAppender.compilationBlockStart(getScopeId(streams.value.key.scope.project)),
+    startTestCompilationLogger := ghaLogAppender.compilationTestBlockStart(getScopeId(streams.value.key.scope.project)),
+    endCompilationLogger := ghaLogAppender.compilationBlockEnd(getScopeId(streams.value.key.scope.project)),
+    endTestCompilationLogger := ghaLogAppender.compilationTestBlockEnd(getScopeId(streams.value.key.scope.project)),
     compile in Compile := ((compile in Compile) dependsOn startCompilationLogger).value,
     compile in Test := ((compile in Test) dependsOn startTestCompilationLogger).value,
-    tcEndCompilation := (endCompilationLogger triggeredBy (compile in Compile)).value,
-    tcEndTestCompilation := (endTestCompilationLogger triggeredBy (compile in Test)).value,
+    ghaEndCompilation := (endCompilationLogger triggeredBy (compile in Compile)).value,
+    ghaEndTestCompilation := (endTestCompilationLogger triggeredBy (compile in Test)).value,
   ) ++
-    inConfig(Compile)(Seq(reporterSettings(tcLogAppender))) ++
-    inConfig(Test)(Seq(reporterSettings(tcLogAppender)))
+    inConfig(Compile)(Seq(reporterSettings(ghaLogAppender))) ++
+    inConfig(Test)(Seq(reporterSettings(ghaLogAppender)))
 
   lazy val loggerOffSettings: Seq[Def.Setting[_]] = Seq(
-    commands += tcLoggerStatusCommand,
+    commands += ghaLoggerStatusCommand,
   )
 
-  def tcLoggerStatusCommand: Command = Command.command("sbt-github-actions-logger") { state =>
+  def ghaLoggerStatusCommand: Command = Command.command("sbt-github-actions-logger") { state =>
     doCommand(state)
   }
 
   private def doCommand(state: State): State = {
     println("Plugin sbt-github-actions-logger was loaded.")
-    val tcv = tcVersion.getOrElse("undefined")
-    if (tcFound) {
-      println(s"GitHub Action '$tcv'")
+    val ghav = ghaVersion.getOrElse("undefined")
+    if (ghaFound) {
+      println(s"GitHub Action '$ghav'")
     } else {
       println(s"GitHub Actions was not discovered. Logger was switched off.")
     }
