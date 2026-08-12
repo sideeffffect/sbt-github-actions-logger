@@ -1,6 +1,10 @@
 sbt GitHub Actions logger
 =========================
 
+| CI | Release |
+| --- | --- |
+| [![Build Status][Badge-GitHubActions]][Link-GitHubActions] | [![Release Artifacts][Badge-SonatypeReleases]][Link-SonatypeReleases] |
+
 This sbt plugin turns sbt's compiler and test output into
 [GitHub Actions workflow commands](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-commands),
 so that build results are surfaced natively in the GitHub Actions UI:
@@ -43,3 +47,9 @@ The plugin's status (on/off, and whether GitHub Actions was detected) will be pr
 This plugin started as a fork of JetBrains'
 [sbt-teamcity-logger](https://github.com/JetBrains/sbt-teamcity-logger), adapted from TeamCity service
 messages to GitHub Actions workflow commands. It is distributed under the Apache License 2.0.
+
+[Link-GitHubActions]: https://github.com/sideeffffect/sbt-github-actions-logger/actions/workflows/release.yml "GitHub Actions link"
+[Badge-GitHubActions]: https://github.com/sideeffffect/sbt-github-actions-logger/actions/workflows/release.yml/badge.svg?event=release "GitHub Actions badge"
+
+[Link-SonatypeReleases]: https://oss.sonatype.org/content/repositories/releases/com/github/sideeffffect/sbt-github-actions-logger_2.12_1.0/ "Sonatype Releases link"
+[Badge-SonatypeReleases]: https://maven-badges.sml.io/sonatype-central/com.github.sideeffffect/sbt-github-actions-logger_2.12_1.0/badge.svg "Sonatype Releases badge"
