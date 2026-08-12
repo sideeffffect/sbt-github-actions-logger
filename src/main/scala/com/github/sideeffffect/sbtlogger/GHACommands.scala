@@ -37,6 +37,12 @@ object GHACommands {
     case object Error extends Severity("error")
   }
 
+  // NB: this is *not* URL/percent-encoding. GitHub Actions only escapes this exact, tiny set of
+  // characters (matching the official `@actions/core` toolkit); everything else, including spaces
+  // and parentheses, must be passed through verbatim. `java.net.URLEncoder` would over-escape (it
+  // turns spaces into `+` and encodes `(`, `)`, `/`, `=`, ... ), producing literal `%xx` noise in
+  // the log, so the escaping is spelled out by hand here.
+
   /** Escaping for the message part of a command (the text after `::`). */
   def escapeData(value: String): String =
     value
