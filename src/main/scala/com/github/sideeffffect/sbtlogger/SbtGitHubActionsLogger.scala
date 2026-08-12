@@ -70,8 +70,11 @@ object SbtGitHubActionsLogger extends AutoPlugin with (State => State) {
   lazy val ghaEndCompilation: TaskKey[Unit] = TaskKey[Unit]("gha-end-compilation", "")
   lazy val ghaEndTestCompilation: TaskKey[Unit] = TaskKey[Unit]("gha-end-test-compilation", "")
 
-  val ghaVersion: Option[String] = sys.env.get("GITHUB_ACTION")
-  val ghaFound: Boolean = ghaVersion.isDefined
+  // `GITHUB_ACTIONS` is set to "true" whenever a workflow runs; it is the canonical way to detect
+  // that we are running inside GitHub Actions. `GITHUB_ACTION` (singular) is only the id of the
+  // currently running action step, so it is used purely for the informational status message.
+  val ghaFound: Boolean = sys.env.get("GITHUB_ACTIONS").contains("true")
+  val ghaAction: Option[String] = sys.env.get("GITHUB_ACTION")
 
   val GHA_LOGGER_PROPERTY_NAME = "GITHUB_ACTIONS_SBT_LOGGER_VERSION"
 
@@ -145,11 +148,11 @@ object SbtGitHubActionsLogger extends AutoPlugin with (State => State) {
 
   private def doCommand(state: State): State = {
     println("Plugin sbt-github-actions-logger was loaded.")
-    val ghav = ghaVersion.getOrElse("undefined")
     if (ghaFound) {
-      println(s"GitHub Action '$ghav'")
+      val action = ghaAction.getOrElse("undefined")
+      println(s"GitHub Actions was discovered. Logger is switched on. Current action: '$action'.")
     } else {
-      println(s"GitHub Actions was not discovered. Logger was switched off.")
+      println("GitHub Actions was not discovered. Logger is switched off.")
     }
     state
   }
