@@ -1,11 +1,12 @@
 /*
  * Copyright 2013-2021 JetBrains s.r.o.
+ * Copyright 2026 Ondra Pelech
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  *
  * You may obtain a copy of the License at
- * http://www.apache.org/licenses/LICENSE-2.0.
+ * https://www.apache.org/licenses/LICENSE-2.0.
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
@@ -17,7 +18,7 @@
 
 package com.github.sideeffffect.sbtlogger
 
-import com.github.sideeffffect.sbtlogger.GHACompilerReporter.inspectionMessage
+import com.github.sideeffffect.sbtlogger.GHACompilerReporter.annotationFor
 import sbt.sbtloggerhack.apiAdapter.{ReporterAdapter, toFilePosition}
 import xsbti.{Position, Problem}
 
@@ -31,46 +32,41 @@ class GHACompilerReporter(delegate: xsbti.Reporter) extends ReporterAdapter(dele
   override def comment(pos: Position, msg: String): Unit = delegate.comment(pos, msg)
 
   override def log(problem: Problem): Unit = {
-    logInspection(problem)
+    annotationFor(problem).foreach(println)
     delegateLog(problem)
-  }
-
-  def logInspection(problem: Problem): Unit = {
-    inspectionMessage(problem).foreach { msg =>
-      println(msg.toMessageString)
-    }
   }
 }
 
 object GHACompilerReporter {
 
-  case class FilePosition(sourcePath: String, startLine: Int, endLine: Int)
+  /** Position of a compiler [[xsbti.Problem]] within a source file, with 1-based line/column numbers. */
+  final case class FilePosition(
+      sourcePath: String,
+      startLine: Option[Int],
+      endLine: Option[Int],
+      startColumn: Option[Int],
+      endColumn: Option[Int],
+  )
 
-  case class ServerMessage(
-      severity: String,
-      filePosition: FilePosition,
-      title: String,
-      message: String,
-  ) {
-    def toMessageString: String = {
-      s"::$severity file=${filePosition.sourcePath.replaceFirst("\\$\\{BASE}/", "").replace(",", "")},line=${filePosition.startLine},endLine=${filePosition.endLine},title=${title.replace("::", "")}::${message.replace("\n", " ")}"
+  /** Renders a compiler problem as a GitHub Actions annotation, if it carries a source position. */
+  def annotationFor(problem: Problem): Option[String] =
+    toFilePosition(problem.position()).map { position =>
+      GHACommands.annotation(
+        severity = severityOf(problem.severity()),
+        message = problem.message(),
+        title = Option(problem.category()).filter(_.nonEmpty),
+        file = Some(position.sourcePath),
+        line = position.startLine,
+        endLine = position.endLine,
+        col = position.startColumn,
+        endColumn = position.endColumn,
+      )
     }
-  }
 
-  def inspectionMessage(problem: Problem): Option[ServerMessage] = {
-    val maybeFilePosition = toFilePosition(problem.position())
-
-    maybeFilePosition.map { filePosition =>
-      ServerMessage(inspectionSeverity(problem.severity()), filePosition, problem.category(), problem.message())
-    }
-  }
-
-  private def inspectionSeverity(severity: xsbti.Severity): String = {
-    import xsbti.Severity.*
+  private def severityOf(severity: xsbti.Severity): GHACommands.Severity =
     severity match {
-      case Info  => "notice"
-      case Warn  => "warning"
-      case Error => "error"
+      case xsbti.Severity.Info  => GHACommands.Severity.Notice
+      case xsbti.Severity.Warn  => GHACommands.Severity.Warning
+      case xsbti.Severity.Error => GHACommands.Severity.Error
     }
-  }
 }

@@ -77,7 +77,7 @@ class GHAReportListener(ap: LogAppender) extends TestReportListener {
       case Status.Skipped | Status.Ignored | Status.Pending =>
         appender.testSkipped(testName, flowId)
       case Status.Canceled =>
-        appender.testSkipped(testName, flowId)
+        appender.testCancelled(testName, flowId)
     }
 
     appender.testFinished(s"$testName", status, duration, flowId)
