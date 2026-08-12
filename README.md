@@ -1,21 +1,45 @@
-SBT GitHub Actions logger
-=============
+sbt GitHub Actions logger
+=========================
 
-This plugin extends SBT standard output with service messages that GitHub Actions build server uses to present build results.
+This sbt plugin turns sbt's compiler and test output into
+[GitHub Actions workflow commands](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-commands),
+so that build results are surfaced natively in the GitHub Actions UI:
+
+- compiler warnings and errors show up as inline **annotations** on the affected lines of code, and
+- compilation and test output is folded into collapsible **log groups**.
+
+When the build is not running inside GitHub Actions the plugin stays out of the way and does nothing,
+so it is safe to enable globally.
 
 ### Installation
 
-Add the following to your project/plugins.sbt file:
+Add the plugin to your `project/plugins.sbt`:
 
 ```scala
-addSbtPlugin("com.github.sideeffffect" % "sbt-github-actions-logger" % "0.1.1")
+addSbtPlugin("com.github.sideeffffect" % "sbt-github-actions-logger" % "<version>")
 ```
 
-or register plugin as a global plugin for your SBT according to [SBT documentation](http://www.scala-sbt.org/0.13.0/docs/Getting-Started/Using-Plugins)
+Alternatively, register it as a global plugin by adding the same line to
+`~/.sbt/1.0/plugins/plugins.sbt` (see the
+[sbt documentation on plugins](https://www.scala-sbt.org/1.x/docs/Using-Plugins.html)).
 
-Plugin is compatible with SBT version 0.13.x.
+The plugin is an `AutoPlugin` and is enabled automatically for all projects that use the `JvmPlugin`
+(i.e. essentially every project), so no further configuration is required.
 
+Requires sbt 1.x.
 
-### Using
+### Usage
 
-To be sure that plugin was installed correctly you can use `sbt-github-actions-logger`. Plugin status will be displayed.
+To check that the plugin was installed correctly, run:
+
+```
+sbt sbt-github-actions-logger
+```
+
+The plugin's status (on/off, and whether GitHub Actions was detected) will be printed.
+
+### Acknowledgements
+
+This plugin started as a fork of JetBrains'
+[sbt-teamcity-logger](https://github.com/JetBrains/sbt-teamcity-logger), adapted from TeamCity service
+messages to GitHub Actions workflow commands. It is distributed under the Apache License 2.0.
