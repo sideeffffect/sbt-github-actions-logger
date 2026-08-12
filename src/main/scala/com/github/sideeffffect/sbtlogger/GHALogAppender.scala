@@ -19,6 +19,7 @@
 package com.github.sideeffffect.sbtlogger
 
 import java.io.{PrintWriter, StringWriter}
+import java.util.concurrent.atomic.AtomicInteger
 
 /** Turns sbt compilation and test events into GitHub Actions workflow commands.
   *
@@ -27,12 +28,34 @@ import java.io.{PrintWriter, StringWriter}
   * do not open their own group; they only contribute output (an annotation on failure) inside the enclosing test-suite
   * group.
   *
+  * GitHub Actions groups still cannot be nested even at the block level, but sbt readily produces nested blocks: `Test
+  * / compile` runs `Compile / compile` as a dependency, so both fire their start hooks before either end hook, and test
+  * suites may run in parallel. To stay valid the appender is depth-aware — it only emits the outermost `::group::` /
+  * `::endgroup::` pair and swallows the inner ones, so the output is always a flat, balanced sequence of groups.
+  *
   * The `flowId` parameters are a leftover of the TeamCity model (which supported parallel message flows); GitHub
   * Actions has no equivalent, so they are ignored.
+  *
+  * @param sink
+  *   where rendered commands are written; defaults to stdout, overridable in tests.
   */
-class GHALogAppender extends LogAppender {
+class GHALogAppender(sink: String => Unit) extends LogAppender {
 
-  private def emit(command: String): Unit = println(command)
+  def this() = this(line => println(line))
+
+  private def emit(command: String): Unit = sink(command)
+
+  // Number of currently open (logical) groups. Only transitions to/from zero produce output.
+  private val groupDepth = new AtomicInteger(0)
+
+  private def openGroup(title: String): Unit =
+    if (groupDepth.getAndIncrement() == 0) emit(GHACommands.startGroup(title))
+
+  private def closeGroup(): Unit =
+    // getAndUpdate never lets the counter go negative, so an unbalanced close (e.g. a failed compile
+    // whose `triggeredBy` end hook did not run) is simply ignored rather than emitting a stray
+    // `::endgroup::`.
+    if (groupDepth.getAndUpdate(depth => if (depth > 0) depth - 1 else 0) == 1) emit(GHACommands.endGroup)
 
   // --- generic sbt log messages ---------------------------------------------
 
@@ -56,16 +79,16 @@ class GHALogAppender extends LogAppender {
 
   // --- compilation -----------------------------------------------------------
 
-  def compilationBlockStart(flowId: String): Unit = emit(GHACommands.startGroup("Compile"))
-  def compilationBlockEnd(flowId: String): Unit = emit(GHACommands.endGroup)
-  def compilationTestBlockStart(flowId: String): Unit = emit(GHACommands.startGroup("Compile (test)"))
-  def compilationTestBlockEnd(flowId: String): Unit = emit(GHACommands.endGroup)
+  def compilationBlockStart(flowId: String): Unit = openGroup("Compile")
+  def compilationBlockEnd(flowId: String): Unit = closeGroup()
+  def compilationTestBlockStart(flowId: String): Unit = openGroup("Compile (test)")
+  def compilationTestBlockEnd(flowId: String): Unit = closeGroup()
 
   // --- test suites -----------------------------------------------------------
 
-  def testSuiteStart(name: String, flowId: String): Unit = emit(GHACommands.startGroup(s"Test: $name"))
+  def testSuiteStart(name: String, flowId: String): Unit = openGroup(s"Test: $name")
 
-  def testSuiteSuccessfulResult(name: String, flowId: String): Unit = emit(GHACommands.endGroup)
+  def testSuiteSuccessfulResult(name: String, flowId: String): Unit = closeGroup()
 
   def testSuiteFailResult(name: String, t: Throwable, flowId: String): Unit = {
     emit(
@@ -75,7 +98,7 @@ class GHALogAppender extends LogAppender {
         title = Some(s"Test suite failed: $name"),
       ),
     )
-    emit(GHACommands.endGroup)
+    closeGroup()
   }
 
   // --- individual tests ------------------------------------------------------
