@@ -26,7 +26,7 @@ Alternatively, register it as a global plugin by adding the same line to
 The plugin is an `AutoPlugin` and is enabled automatically for all projects that use the `JvmPlugin`
 (i.e. essentially every project), so no further configuration is required.
 
-Requires sbt 1.x.
+Cross-published for **sbt 1.x** and **sbt 2.x**; `addSbtPlugin` picks the right artifact for your build.
 
 ### Usage
 

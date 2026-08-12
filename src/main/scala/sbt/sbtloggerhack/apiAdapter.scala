@@ -17,37 +17,15 @@
 
 package sbt.sbtloggerhack
 
-import com.github.sideeffffect.sbtlogger.{GHACompilerReporter, GHALogAppender, GHALogger, GHALoggerAppender}
 import com.github.sideeffffect.sbtlogger.GHACompilerReporter.FilePosition
-import sbt.{Def, Reference, Scope, Select, Zero}
 import xsbti.Problem
 
-import scala.collection.mutable
-
+/** Small shim isolating the parts of the sbt API that this plugin depends on.
+  *
+  * The pieces that differ between sbt 1.x and sbt 2.x live in the version-specific `Compat` objects (`src/main/scala-2`
+  * and `src/main/scala-3`); everything here compiles unchanged on both.
+  */
 object apiAdapter {
-
-  type SessionSettings = sbt.internal.SessionSettings
-  type ExtraLogger = org.apache.logging.log4j.core.Appender
-
-  def projectScope(project: Reference): Scope = Scope(Select(project), Zero, Zero, Zero)
-
-  def extraLogger(
-      ghaLoggers: mutable.Map[String, GHALogger],
-      ghaLogAppender: GHALogAppender,
-      scope: String,
-  ): ExtraLogger = {
-    val appender = new GHALoggerAppender(ghaLogAppender, scope)
-    appender.start()
-    appender
-  }
-
-  def reporterSettings(tcLogAppender: GHALogAppender): Def.Setting[_] = {
-    import sbt.Keys.compile
-    Unhide.compilerReporter in compile := {
-      val defaultReporter = (Unhide.compilerReporter in compile).value
-      new GHACompilerReporter(defaultReporter)
-    }
-  }
 
   def toFilePosition(position: xsbti.Position): Option[FilePosition] = {
     val path = position.sourcePath()

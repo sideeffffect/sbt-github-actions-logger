@@ -1,11 +1,12 @@
 /*
  * Copyright 2013-2021 JetBrains s.r.o.
+ * Copyright 2026 Ondra Pelech
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  *
  * You may obtain a copy of the License at
- * http://www.apache.org/licenses/LICENSE-2.0.
+ * https://www.apache.org/licenses/LICENSE-2.0.
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
@@ -19,47 +20,14 @@ package com.github.sideeffffect.sbtlogger
 
 import sbt._
 import sbt.Keys._
-import sbt.sbtloggerhack.apiAdapter._
 import sbt.plugins.JvmPlugin
 
-import scala.collection.mutable
-
-object SbtGitHubActionsLogger extends AutoPlugin with (State => State) {
+object SbtGitHubActionsLogger extends AutoPlugin {
 
   override def requires: Plugins = JvmPlugin
   override def trigger: PluginTrigger = allRequirements
 
-  def apply(state: State): State = {
-    val sbtLoggerVersion = System.getProperty(GHA_LOGGER_PROPERTY_NAME)
-    if (sbtLoggerVersion == "reloaded") {
-      return state
-    }
-
-    // As seen in https://github.com/JetBrains/sbt-structure/blob/a65499070252b31bd4bf7cf79dbc8a1aa4e5830a/extractor/src/main/scala/org/jetbrains/sbt/operations.scala#L13
-    val extracted = Project.extract(state)
-    import extracted.{structure => extractedStructure, _}
-    val transformedProjectSettings = extractedStructure.allProjectRefs.flatMap { projectRef =>
-      transformSettings(projectScope(projectRef), projectRef.build, rootProject, SbtGitHubActionsLogger.projectSettings)
-    }
-    val transformedSession = session.appendRaw(transformedProjectSettings)
-    reapply(transformedSession, state)
-  }
-
-  // copied from sbt.internal.Load
-  private def transformSettings(
-      thisScope: Scope,
-      uri: URI,
-      rootProject: URI => String,
-      settings: Seq[Setting[_]],
-  ): Seq[Setting[_]] =
-    Project.transform(Scope.resolveScope(thisScope, uri, rootProject), settings)
-
-  // copied from sbt.internal.SessionSettings
-  private def reapply(session: SessionSettings, s: State): State =
-    BuiltinCommands.reapply(session, Project.structure(s), s)
-
   lazy val ghaLogAppender = new GHALogAppender()
-  lazy val ghaLoggers: mutable.Map[String, GHALogger] = collection.mutable.Map[String, GHALogger]()
   lazy val ghaTestListener = new GHAReportListener(ghaLogAppender)
   lazy val startCompilationLogger: TaskKey[Unit] = TaskKey[Unit]("start-compilation-logger", "runs before compile")
   lazy val startTestCompilationLogger: TaskKey[Unit] =
@@ -76,67 +44,24 @@ object SbtGitHubActionsLogger extends AutoPlugin with (State => State) {
   val ghaFound: Boolean = sys.env.get("GITHUB_ACTIONS").contains("true")
   val ghaAction: Option[String] = sys.env.get("GITHUB_ACTION")
 
-  val GHA_LOGGER_PROPERTY_NAME = "GITHUB_ACTIONS_SBT_LOGGER_VERSION"
-
-  val ghaLoggerVersion: String = System.getProperty(GHA_LOGGER_PROPERTY_NAME)
-  if (ghaLoggerVersion == null) {
-    System.setProperty(GHA_LOGGER_PROPERTY_NAME, "loaded")
-  } else if (ghaLoggerVersion == "loaded") {
-    System.setProperty(GHA_LOGGER_PROPERTY_NAME, "reloaded")
-  }
-
-  var testResultLoggerFound = true
-
-  try {
-    val _: Def.Initialize[sbt.TestResultLogger] = Def.setting {
-      (testResultLogger in Test).value
-    }
-  } catch {
-    case _: java.lang.NoSuchMethodError =>
-      testResultLoggerFound = false
-  }
-
-  // noinspection TypeAnnotation,ConvertExpressionToSAM
-  override lazy val projectSettings =
-    if (ghaFound && testResultLoggerFound)
+  override lazy val projectSettings: Seq[Def.Setting[_]] =
+    if (ghaFound)
       loggerOnSettings ++ Seq(
-        testResultLogger in (Test, test) := new TestResultLogger {
-
-          import sbt.Tests._
-
-          def run(log: Logger, results: Output, taskName: String): Unit = {
-            // default behaviour there is
-            // TestResultLogger.SilentWhenNoTests.run(log, results, taskName)
-            // we will just ignore to prevent appearing of 'exit code 1' when test failed
-          }
-        },
+        // Swallow the test result so a failed test suite does not additionally make the sbt task
+        // fail with a bare "exit code 1"; the failure is already reported as an annotation.
+        // `TestResultLogger.apply(Function3)` exists on both sbt 1.x and sbt 2.x, and lets us avoid
+        // referring to the `sbt.Tests.Output` type, whose module differs between the two.
+        Test / test / testResultLogger := TestResultLogger((_, _, _) => ()),
       )
-    else if (ghaFound) loggerOnSettings
     else loggerOffSettings
 
+  // The bulk of the settings redefine sbt tasks (`compile`, `compilerReporter`) or rely on the
+  // log4j-based `extraLoggers`; both of these differ between sbt 1.x and sbt 2.x, so they live in
+  // the version-specific `Compat` object.
   lazy val loggerOnSettings: Seq[Def.Setting[_]] = Seq(
     commands += ghaLoggerStatusCommand,
-    extraLoggers := {
-      val currentFunction: Def.ScopedKey[_] => Seq[ExtraLogger] = extraLoggers.value
-      key: ScopedKey[_] => {
-        val scope: String = getScopeId(key.scope.project)
-        val logger: ExtraLogger = extraLogger(ghaLoggers, ghaLogAppender, scope)
-
-        logger +: currentFunction(key)
-      }
-    },
     testListeners += ghaTestListener,
-    startCompilationLogger := ghaLogAppender.compilationBlockStart(getScopeId(streams.value.key.scope.project)),
-    startTestCompilationLogger := ghaLogAppender.compilationTestBlockStart(getScopeId(streams.value.key.scope.project)),
-    endCompilationLogger := ghaLogAppender.compilationBlockEnd(getScopeId(streams.value.key.scope.project)),
-    endTestCompilationLogger := ghaLogAppender.compilationTestBlockEnd(getScopeId(streams.value.key.scope.project)),
-    compile in Compile := ((compile in Compile) dependsOn startCompilationLogger).value,
-    compile in Test := ((compile in Test) dependsOn startTestCompilationLogger).value,
-    ghaEndCompilation := (endCompilationLogger triggeredBy (compile in Compile)).value,
-    ghaEndTestCompilation := (endTestCompilationLogger triggeredBy (compile in Test)).value,
-  ) ++
-    inConfig(Compile)(Seq(reporterSettings(ghaLogAppender))) ++
-    inConfig(Test)(Seq(reporterSettings(ghaLogAppender)))
+  ) ++ Compat.loggerTaskSettings
 
   lazy val loggerOffSettings: Seq[Def.Setting[_]] = Seq(
     commands += ghaLoggerStatusCommand,
@@ -155,10 +80,6 @@ object SbtGitHubActionsLogger extends AutoPlugin with (State => State) {
       println("GitHub Actions was not discovered. Logger is switched off.")
     }
     state
-  }
-
-  private def getScopeId(scope: ScopeAxis[sbt.Reference]): String = {
-    "" + scope.hashCode()
   }
 
 }
