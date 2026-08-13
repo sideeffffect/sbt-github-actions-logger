@@ -61,3 +61,7 @@ scalacOptions ++= Seq(
 Compile / doc / scalacOptions := (Compile / scalacOptions).value.filterNot(_ == "-Werror")
 
 libraryDependencies += "org.scalameta" %% "munit" % "1.1.1" % Test
+
+// sbt 2's on-load unused-key lint reports false positives here (keys from sbt-git / sbt-dynver,
+// pulled in transitively by sbt-ci-release, that the release machinery uses), so turn it off.
+Global / lintUnusedKeysOnLoad := false
