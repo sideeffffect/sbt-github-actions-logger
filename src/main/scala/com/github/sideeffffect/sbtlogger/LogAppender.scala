@@ -33,9 +33,9 @@ trait LogAppender {
 
   def testSuiteStart(name: String, flowId: String): Unit
 
-  def testSuiteSuccessfulResult(name: String, flowId: String): Unit
+  def testSuiteFinished(name: String, flowId: String): Unit
 
-  def testSuiteFailResult(name: String, t: Throwable, flowId: String): Unit
+  def testSuiteFailed(name: String, t: Throwable, flowId: String): Unit
 
   def testStart(name: String, flowId: String): Unit
 

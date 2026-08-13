@@ -46,12 +46,12 @@ class GHALogAppenderSuite extends munit.FunSuite {
     assertEquals(out, List("::group::Compile (test)", "::endgroup::"))
   }
 
-  test("overlapping (parallel) test suites produce a single balanced group") {
+  test("overlapping (parallel) suite groups still collapse into a single balanced group") {
     val out = withAppender { (a, _) =>
       a.testSuiteStart("A", "")
       a.testSuiteStart("B", "")
-      a.testSuiteSuccessfulResult("A", "")
-      a.testSuiteSuccessfulResult("B", "")
+      a.testSuiteFinished("A", "")
+      a.testSuiteFinished("B", "")
     }
     assertEquals(out, List("::group::Test: A", "::endgroup::"))
   }
@@ -67,7 +67,7 @@ class GHALogAppenderSuite extends munit.FunSuite {
     val out = withAppender { (a, _) =>
       a.testSuiteStart("MySuite", "")
       a.testFailed("MySuite.this fails", "boom", "")
-      a.testSuiteSuccessfulResult("MySuite", "")
+      a.testSuiteFinished("MySuite", "")
     }
     assertEquals(
       out,

@@ -28,7 +28,6 @@ object SbtGitHubActionsLogger extends AutoPlugin {
   override def trigger: PluginTrigger = allRequirements
 
   lazy val ghaLogAppender = new GHALogAppender()
-  lazy val ghaTestListener = new GHAReportListener(ghaLogAppender)
   lazy val startCompilationLogger: TaskKey[Unit] = TaskKey[Unit]("start-compilation-logger", "runs before compile")
   lazy val startTestCompilationLogger: TaskKey[Unit] =
     TaskKey[Unit]("start-test-compilation-logger", "runs before compile in test")
@@ -60,7 +59,9 @@ object SbtGitHubActionsLogger extends AutoPlugin {
   // the version-specific `Compat` object.
   lazy val loggerOnSettings: Seq[Def.Setting[_]] = Seq(
     commands += ghaLoggerStatusCommand,
-    testListeners += ghaTestListener,
+    // Per-suite log groups only when tests run sequentially; with parallel execution (the sbt
+    // default) suites would interleave into one group, so we group nothing and rely on annotations.
+    Test / testListeners += new GHAReportListener(ghaLogAppender, groupSuites = !(Test / parallelExecution).value),
   ) ++ Compat.loggerTaskSettings
 
   lazy val loggerOffSettings: Seq[Def.Setting[_]] = Seq(

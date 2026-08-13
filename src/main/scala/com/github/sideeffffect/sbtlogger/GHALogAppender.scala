@@ -88,9 +88,9 @@ class GHALogAppender(sink: String => Unit) extends LogAppender {
 
   def testSuiteStart(name: String, flowId: String): Unit = openGroup(s"Test: $name")
 
-  def testSuiteSuccessfulResult(name: String, flowId: String): Unit = closeGroup()
+  def testSuiteFinished(name: String, flowId: String): Unit = closeGroup()
 
-  def testSuiteFailResult(name: String, t: Throwable, flowId: String): Unit = {
+  def testSuiteFailed(name: String, t: Throwable, flowId: String): Unit =
     emit(
       GHACommands.annotation(
         GHACommands.Severity.Error,
@@ -98,8 +98,6 @@ class GHALogAppender(sink: String => Unit) extends LogAppender {
         title = Some(s"Test suite failed: $name"),
       ),
     )
-    closeGroup()
-  }
 
   // --- individual tests ------------------------------------------------------
 
