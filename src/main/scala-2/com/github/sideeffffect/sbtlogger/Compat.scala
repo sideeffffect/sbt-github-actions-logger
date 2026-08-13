@@ -42,10 +42,10 @@ object Compat {
       startTestCompilationLogger := ghaLogAppender.compilationTestBlockStart(noFlowId),
       endCompilationLogger := ghaLogAppender.compilationBlockEnd(noFlowId),
       endTestCompilationLogger := ghaLogAppender.compilationTestBlockEnd(noFlowId),
-      Compile / compile := ((Compile / compile) dependsOn startCompilationLogger).value,
-      Test / compile := ((Test / compile) dependsOn startTestCompilationLogger).value,
-      ghaEndCompilation := (endCompilationLogger triggeredBy (Compile / compile)).value,
-      ghaEndTestCompilation := (endTestCompilationLogger triggeredBy (Test / compile)).value,
+      Compile / compile := (Compile / compile).dependsOn(startCompilationLogger).value,
+      Test / compile := (Test / compile).dependsOn(startTestCompilationLogger).value,
+      ghaEndCompilation := endCompilationLogger.triggeredBy(Compile / compile).value,
+      ghaEndTestCompilation := endTestCompilationLogger.triggeredBy(Test / compile).value,
     ) ++
       inConfig(Compile)(Seq(reporterSetting)) ++
       inConfig(Test)(Seq(reporterSetting))

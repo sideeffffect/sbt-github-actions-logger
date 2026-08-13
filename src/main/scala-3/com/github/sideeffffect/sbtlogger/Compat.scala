@@ -43,10 +43,10 @@ object Compat {
       startTestCompilationLogger := Def.uncached(ghaLogAppender.compilationTestBlockStart(noFlowId)),
       endCompilationLogger := Def.uncached(ghaLogAppender.compilationBlockEnd(noFlowId)),
       endTestCompilationLogger := Def.uncached(ghaLogAppender.compilationTestBlockEnd(noFlowId)),
-      Compile / compile := Def.uncached(((Compile / compile) dependsOn startCompilationLogger).value),
-      Test / compile := Def.uncached(((Test / compile) dependsOn startTestCompilationLogger).value),
-      ghaEndCompilation := Def.uncached((endCompilationLogger triggeredBy (Compile / compile)).value),
-      ghaEndTestCompilation := Def.uncached((endTestCompilationLogger triggeredBy (Test / compile)).value),
+      Compile / compile := Def.uncached((Compile / compile).dependsOn(startCompilationLogger).value),
+      Test / compile := Def.uncached((Test / compile).dependsOn(startTestCompilationLogger).value),
+      ghaEndCompilation := Def.uncached(endCompilationLogger.triggeredBy(Compile / compile).value),
+      ghaEndTestCompilation := Def.uncached(endTestCompilationLogger.triggeredBy(Test / compile).value),
     ) ++
       inConfig(Compile)(Seq(reporterSetting)) ++
       inConfig(Test)(Seq(reporterSetting))

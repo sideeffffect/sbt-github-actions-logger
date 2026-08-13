@@ -43,15 +43,12 @@ object SbtGitHubActionsLogger extends AutoPlugin {
   val ghaFound: Boolean = sys.env.get("GITHUB_ACTIONS").contains("true")
   val ghaAction: Option[String] = sys.env.get("GITHUB_ACTION")
 
+  // The plugin only adds GitHub Actions output; it must not otherwise change the build's behaviour.
+  // In particular it must NOT touch `testResultLogger`: a failing test suite has to fail the build
+  // (non-zero exit) exactly as it would without this plugin. Test failures are still surfaced to
+  // GitHub Actions as `::error` annotations via the test listener in `loggerOnSettings`.
   override lazy val projectSettings: Seq[Def.Setting[_]] =
-    if (ghaFound)
-      loggerOnSettings ++ Seq(
-        // Swallow the test result so a failed test suite does not additionally make the sbt task
-        // fail with a bare "exit code 1"; the failure is already reported as an annotation.
-        // `TestResultLogger.apply(Function3)` exists on both sbt 1.x and sbt 2.x, and lets us avoid
-        // referring to the `sbt.Tests.Output` type, whose module differs between the two.
-        Test / test / testResultLogger := TestResultLogger((_, _, _) => ()),
-      )
+    if (ghaFound) loggerOnSettings
     else loggerOffSettings
 
   // The bulk of the settings redefine sbt tasks (`compile`, `compilerReporter`) or rely on the

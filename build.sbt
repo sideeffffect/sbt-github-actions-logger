@@ -42,6 +42,22 @@ scalacOptions ++= Seq(
   "-deprecation",
   "-feature",
   "-unchecked",
+  // `extraLoggers` was deprecated in sbt 1.4 without a non-deprecated replacement, but it is the
+  // only sbt 1.x hook for injecting our logger, so silence just that one deprecation. It must stay
+  // `silent` (not `warning`) so `-Xfatal-warnings` below does not escalate it to an error.
+  "-Wconf:cat=deprecation&msg=extraLoggers:silent",
+  // Scala 3 (the sbt 2.x axis) deprecates `_` for type wildcards in favour of `?`, but `?` is not
+  // valid on Scala 2.12 (the sbt 1.x axis), so the shared source must keep `_`. Silence that one
+  // Scala 3 deprecation; it matches nothing on Scala 2.12.
+  "-Wconf:msg=`_` is deprecated for wildcard:silent",
+  // Fail the build on any (non-silenced) warning, so the warning-free state can't regress.
+  // (`-Werror` is spelled the same on Scala 2.12 and Scala 3; `-Xfatal-warnings` is a deprecated
+  // alias on Scala 3.)
+  "-Werror",
 )
+
+// ...but not for Scaladoc: its `[[...]]` cross-reference resolution is flaky (e.g. it can't link Java
+// types such as xsbti.Problem), and such warnings must not fail `doc` / `publishLocal` / a release.
+Compile / doc / scalacOptions := (Compile / scalacOptions).value.filterNot(_ == "-Werror")
 
 libraryDependencies += "org.scalameta" %% "munit" % "1.1.1" % Test

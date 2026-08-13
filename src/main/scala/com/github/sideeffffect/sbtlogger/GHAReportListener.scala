@@ -53,9 +53,10 @@ class GHAReportListener(ap: LogAppender, groupSuites: Boolean) extends TestRepor
     } else ""
   }
 
-  def flowId: String = {
-    Thread.currentThread().getId.toString
-  }
+  // GitHub Actions has no equivalent of TeamCity's parallel message "flows", so this value is
+  // ignored by the appender; the thread name is a convenient, non-deprecated per-thread identifier
+  // (`Thread.getId` is deprecated for removal since Java 19).
+  def flowId: String = Thread.currentThread().getName
 
   protected def logSingleTest(event: sbt.testing.Event): Unit = {
     val fqn = event.fullyQualifiedName

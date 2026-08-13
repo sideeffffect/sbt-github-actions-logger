@@ -39,7 +39,7 @@ class GHACompilerReporter(delegate: xsbti.Reporter) extends ReporterAdapter(dele
 
 object GHACompilerReporter {
 
-  /** Position of a compiler [[xsbti.Problem]] within a source file, with 1-based line/column numbers. */
+  /** Position of a compiler `xsbti.Problem` within a source file, with 1-based line/column numbers. */
   final case class FilePosition(
       sourcePath: String,
       startLine: Option[Int],
