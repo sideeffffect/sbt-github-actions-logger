@@ -7,18 +7,6 @@ on:
 jobs:
   release:
     runs-on: ubuntu-24.04
-    strategy:
-      fail-fast: false
-      # Release one axis at a time to avoid concurrent Sonatype staging.
-      max-parallel: 1
-      matrix:
-        include:
-          # sbt 1.x plugin: build on its minimum supported JDK (Java 8).
-          - java: '8'
-            scala: '2.12.20'
-          # sbt 2.x plugin: the Scala 3 compiler bridge needs Java 17+.
-          - java: '17'
-            scala: '3.8.4'
     steps:
       - uses: actions/checkout@v5
         with:
@@ -26,12 +14,12 @@ jobs:
       - uses: actions/setup-java@v5
         with:
           distribution: 'temurin'
-          java-version: ${{ matrix.java }}
+          # The build tool is sbt 2.x, which requires Java 17+; `ci-release` cross-publishes both the
+          # sbt 1.x and sbt 2.x artifacts from this one JDK.
+          java-version: 17
           cache: 'sbt'
-      - name: sbt ci-release (Scala ${{ matrix.scala }}) ${{ github.ref }}
-        # Restrict the cross build to a single axis so this job publishes only that artifact on the
-        # matching JDK; `ci-release` still handles the snapshot-vs-tag logic and Sonatype release.
-        run: ./sbt 'set crossScalaVersions := Seq("${{ matrix.scala }}")' ci-release
+      - name: sbt ci-release ${{ github.ref }}
+        run: ./sbt ci-release
         env:
           PGP_PASSPHRASE: ${{ secrets.PGP_PASSPHRASE }}
           PGP_SECRET: ${{ secrets.PGP_SECRET }}

@@ -26,7 +26,7 @@ import sbt.sbtloggerhack.Unhide
   *
   * On sbt 1.x tasks are not result-cached, so the side-effecting logger tasks and the redefinitions of `compile` /
   * `compilerReporter` can be assigned directly. sbt 1.x also still exposes the log4j-based `extraLoggers` extension
-  * point (see [[extraLoggerSettings]]), which sbt 2.x removed.
+  * point (see `extraLoggerSettings`), which sbt 2.x removed.
   */
 object Compat {
 
