@@ -22,13 +22,22 @@ import sbt.testing.{NestedTestSelector, OptionalThrowable, Status, TestSelector}
 
 import java.io.{PrintWriter, StringWriter}
 
-class GHAReportListener(ap: LogAppender) extends TestReportListener {
+/** Reports test events as GitHub Actions workflow commands.
+  *
+  * @param ap
+  *   the appender that renders the commands.
+  * @param groupSuites
+  *   whether to wrap each test suite in its own collapsible log group. This must be off when test suites run in
+  *   parallel: GitHub Actions groups are a single global, non-nestable log stream, so concurrent suites would otherwise
+  *   interleave into one mislabelled group. When off, suites are not grouped and only failures are reported (as
+  *   annotations, which are immune to interleaving).
+  */
+class GHAReportListener(ap: LogAppender, groupSuites: Boolean) extends TestReportListener {
 
   val appender: LogAppender = ap
 
-  def startGroup(name: String): Unit = {
-    appender.testSuiteStart(name, flowId)
-  }
+  def startGroup(name: String): Unit =
+    if (groupSuites) appender.testSuiteStart(name, flowId)
 
   /** called for each test method or equivalent */
   def testEvent(event: TestEvent): Unit = {
@@ -77,7 +86,7 @@ class GHAReportListener(ap: LogAppender) extends TestReportListener {
       case Status.Skipped | Status.Ignored | Status.Pending =>
         appender.testSkipped(testName, flowId)
       case Status.Canceled =>
-        appender.testSkipped(testName, flowId)
+        appender.testCancelled(testName, flowId)
     }
 
     appender.testFinished(s"$testName", status, duration, flowId)
@@ -85,12 +94,14 @@ class GHAReportListener(ap: LogAppender) extends TestReportListener {
 
   /** called if there was an error during test */
   def endGroup(name: String, t: Throwable): Unit = {
-    appender.testSuiteFailResult(name, t, flowId)
+    // The suite-level failure is always reported as an annotation; the group is only closed if we
+    // opened one in the first place.
+    appender.testSuiteFailed(name, t, flowId)
+    if (groupSuites) appender.testSuiteFinished(name, flowId)
   }
 
   /** called if test completed */
-  def endGroup(name: String, result: TestResult): Unit = {
-    appender.testSuiteSuccessfulResult(name, flowId)
-  }
+  def endGroup(name: String, result: TestResult): Unit =
+    if (groupSuites) appender.testSuiteFinished(name, flowId)
 
 }

@@ -26,3 +26,5 @@ scalacOptions ++= Seq(
   "-feature",
   "-unchecked",
 )
+
+libraryDependencies += "org.scalameta" %% "munit" % "1.1.1" % Test

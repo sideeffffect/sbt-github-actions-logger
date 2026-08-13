@@ -60,7 +60,6 @@ object SbtGitHubActionsLogger extends AutoPlugin with (State => State) {
 
   lazy val ghaLogAppender = new GHALogAppender()
   lazy val ghaLoggers: mutable.Map[String, GHALogger] = collection.mutable.Map[String, GHALogger]()
-  lazy val ghaTestListener = new GHAReportListener(ghaLogAppender)
   lazy val startCompilationLogger: TaskKey[Unit] = TaskKey[Unit]("start-compilation-logger", "runs before compile")
   lazy val startTestCompilationLogger: TaskKey[Unit] =
     TaskKey[Unit]("start-test-compilation-logger", "runs before compile in test")
@@ -125,7 +124,9 @@ object SbtGitHubActionsLogger extends AutoPlugin with (State => State) {
         logger +: currentFunction(key)
       }
     },
-    testListeners += ghaTestListener,
+    // Per-suite log groups only when tests run sequentially; with parallel execution (the sbt
+    // default) suites would interleave into one group, so we group nothing and rely on annotations.
+    Test / testListeners += new GHAReportListener(ghaLogAppender, groupSuites = !(Test / parallelExecution).value),
     startCompilationLogger := ghaLogAppender.compilationBlockStart(getScopeId(streams.value.key.scope.project)),
     startTestCompilationLogger := ghaLogAppender.compilationTestBlockStart(getScopeId(streams.value.key.scope.project)),
     endCompilationLogger := ghaLogAppender.compilationBlockEnd(getScopeId(streams.value.key.scope.project)),

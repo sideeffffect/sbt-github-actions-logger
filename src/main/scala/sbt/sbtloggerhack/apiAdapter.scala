@@ -51,12 +51,24 @@ object apiAdapter {
 
   def toFilePosition(position: xsbti.Position): Option[FilePosition] = {
     val path = position.sourcePath()
-    val maybeStartLine = position.startLine()
-    val maybeEndLine = position.endLine()
-    val startLine = if (maybeStartLine.isPresent) maybeStartLine.get().intValue() else 0
-    val endLine = if (maybeEndLine.isPresent) maybeEndLine.get().intValue() else 0
-    if (path.isPresent) Some(FilePosition(path.get(), startLine, endLine))
-    else None
+    if (!path.isPresent) None
+    else {
+      def opt(value: java.util.Optional[Integer]): Option[Int] =
+        if (value.isPresent) Some(value.get().intValue()) else None
+      // sbt sometimes reports paths as "${BASE}/src/...."; GitHub annotations need a path relative
+      // to the repository root, so strip that prefix.
+      val sourcePath = path.get().replaceFirst("""\$\{BASE\}/""", "")
+      // xsbti reports 0-based columns; GitHub Actions annotations use 1-based columns.
+      Some(
+        FilePosition(
+          sourcePath = sourcePath,
+          startLine = opt(position.startLine()),
+          endLine = opt(position.endLine()),
+          startColumn = opt(position.startColumn()).map(_ + 1),
+          endColumn = opt(position.endColumn()).map(_ + 1),
+        ),
+      )
+    }
   }
 
   abstract class ReporterAdapter(delegate: xsbti.Reporter) extends xsbti.Reporter {
