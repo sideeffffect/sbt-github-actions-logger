@@ -84,33 +84,12 @@ object SbtGitHubActionsLogger extends AutoPlugin with (State => State) {
     System.setProperty(GHA_LOGGER_PROPERTY_NAME, "reloaded")
   }
 
-  var testResultLoggerFound = true
-
-  try {
-    val _: Def.Initialize[sbt.TestResultLogger] = Def.setting {
-      (Test / testResultLogger).value
-    }
-  } catch {
-    case _: java.lang.NoSuchMethodError =>
-      testResultLoggerFound = false
-  }
-
-  // noinspection TypeAnnotation,ConvertExpressionToSAM
-  override lazy val projectSettings =
-    if (ghaFound && testResultLoggerFound)
-      loggerOnSettings ++ Seq(
-        Test / test / testResultLogger := new TestResultLogger {
-
-          import sbt.Tests._
-
-          def run(log: Logger, results: Output, taskName: String): Unit = {
-            // default behaviour there is
-            // TestResultLogger.SilentWhenNoTests.run(log, results, taskName)
-            // we will just ignore to prevent appearing of 'exit code 1' when test failed
-          }
-        },
-      )
-    else if (ghaFound) loggerOnSettings
+  // The plugin only adds GitHub Actions output; it must not otherwise change the build's behaviour.
+  // In particular it must NOT touch `testResultLogger`: a failing test suite has to fail the build
+  // (non-zero exit) exactly as it would without this plugin. Test failures are still surfaced to
+  // GitHub Actions as `::error` annotations via the test listener in `loggerOnSettings`.
+  override lazy val projectSettings: Seq[Def.Setting[_]] =
+    if (ghaFound) loggerOnSettings
     else loggerOffSettings
 
   lazy val loggerOnSettings: Seq[Def.Setting[_]] = Seq(
