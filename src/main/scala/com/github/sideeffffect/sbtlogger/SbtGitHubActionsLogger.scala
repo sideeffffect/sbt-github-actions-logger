@@ -110,10 +110,10 @@ object SbtGitHubActionsLogger extends AutoPlugin with (State => State) {
     startTestCompilationLogger := ghaLogAppender.compilationTestBlockStart(getScopeId(streams.value.key.scope.project)),
     endCompilationLogger := ghaLogAppender.compilationBlockEnd(getScopeId(streams.value.key.scope.project)),
     endTestCompilationLogger := ghaLogAppender.compilationTestBlockEnd(getScopeId(streams.value.key.scope.project)),
-    compile in Compile := ((compile in Compile) dependsOn startCompilationLogger).value,
-    compile in Test := ((compile in Test) dependsOn startTestCompilationLogger).value,
-    ghaEndCompilation := (endCompilationLogger triggeredBy (compile in Compile)).value,
-    ghaEndTestCompilation := (endTestCompilationLogger triggeredBy (compile in Test)).value,
+    Compile / compile := ((Compile / compile) dependsOn startCompilationLogger).value,
+    Test / compile := ((Test / compile) dependsOn startTestCompilationLogger).value,
+    ghaEndCompilation := (endCompilationLogger triggeredBy (Compile / compile)).value,
+    ghaEndTestCompilation := (endTestCompilationLogger triggeredBy (Test / compile)).value,
   ) ++
     inConfig(Compile)(Seq(reporterSettings(ghaLogAppender))) ++
     inConfig(Test)(Seq(reporterSettings(ghaLogAppender)))

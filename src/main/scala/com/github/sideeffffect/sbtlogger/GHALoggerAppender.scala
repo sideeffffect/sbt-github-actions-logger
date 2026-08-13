@@ -18,13 +18,20 @@
 package com.github.sideeffffect.sbtlogger
 
 import org.apache.logging.log4j.core.appender.AbstractAppender
+import org.apache.logging.log4j.core.config.Property
 import org.apache.logging.log4j.core.layout.PatternLayout
 import org.apache.logging.log4j.message.{ObjectMessage, ReusableObjectMessage}
 import org.apache.logging.log4j.{Level, core}
 import sbt.internal.util.{ObjectEvent, StringEvent}
 
 class GHALoggerAppender(appender: LogAppender, scope: String)
-    extends AbstractAppender("gha-logger-" + scope, null, PatternLayout.createDefaultLayout(), true) {
+    extends AbstractAppender(
+      "gha-logger-" + scope,
+      null,
+      PatternLayout.createDefaultLayout(),
+      true,
+      Property.EMPTY_ARRAY,
+    ) {
 
   def appendMessageContent(level: Level, parameter: AnyRef, flowId: String): Unit = {
     val message = parameter match {

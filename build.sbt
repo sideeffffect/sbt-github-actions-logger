@@ -25,6 +25,16 @@ scalacOptions ++= Seq(
   "-deprecation",
   "-feature",
   "-unchecked",
+  // `extraLoggers` was deprecated in sbt 1.4 without a non-deprecated replacement, but it is the
+  // only sbt 1.x hook for injecting our logger, so silence just that one deprecation. It must stay
+  // `silent` (not `warning`) so `-Xfatal-warnings` below does not escalate it to an error.
+  "-Wconf:cat=deprecation&msg=extraLoggers:silent",
+  // Fail the build on any (non-silenced) warning, so the warning-free state can't regress.
+  "-Xfatal-warnings",
 )
+
+// ...but not for Scaladoc: its `[[...]]` cross-reference resolution is flaky (e.g. it can't link Java
+// types such as xsbti.Problem), and such warnings must not fail `doc` / `publishLocal` / a release.
+Compile / doc / scalacOptions := (Compile / scalacOptions).value.filterNot(_ == "-Xfatal-warnings")
 
 libraryDependencies += "org.scalameta" %% "munit" % "1.1.1" % Test
