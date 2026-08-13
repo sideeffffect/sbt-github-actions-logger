@@ -28,3 +28,20 @@ scalacOptions ++= Seq(
 )
 
 libraryDependencies += "org.scalameta" %% "munit" % "1.1.1" % Test
+
+// CI runs `sbt publishLocal`; gate it on the test suite so the tests run (and can fail the build)
+// in CI. This lives in build.sbt rather than the workflow because the tests should run before every
+// publish anyway, and it needs no `.github/workflows` change.
+//
+// We check the raw `executeTests` outcome instead of depending on the `test` task, because this
+// project dogfoods sbt-github-actions-logger, which replaces `Test / test`'s result logger with a
+// no-op — so `test` on its own would not fail the build on a test failure.
+val checkTests = taskKey[Unit]("Run the tests and fail the build on any test failure.")
+checkTests := {
+  val result = (Test / executeTests).value
+  if (result.overall != sbt.protocol.testing.TestResult.Passed) {
+    sys.error(s"Tests did not pass (overall result: ${result.overall}).")
+  }
+}
+
+publishLocal := publishLocal.dependsOn(checkTests).value
