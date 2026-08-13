@@ -14,7 +14,8 @@ jobs:
       - uses: actions/setup-java@v5
         with:
           distribution: 'temurin'
-          java-version: 8
+          # `ci-release` cross-publishes both axes, and the sbt 2.x (Scala 3) axis needs Java 17+.
+          java-version: 17
           cache: 'sbt'
       - name: sbt ci-release ${{ github.ref }}
         run: ./sbt ci-release
