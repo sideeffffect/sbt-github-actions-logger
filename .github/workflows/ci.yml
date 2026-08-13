@@ -7,7 +7,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        java: [ '17', '21', '25' ]
+        java: [ '8', '11', '17', '21', '25' ]
     steps:
       - uses: actions/checkout@v5
         with:
@@ -19,8 +19,13 @@ jobs:
           distribution: 'temurin'
           java-version: ${{ matrix.java }}
           cache: 'sbt'
-      - name: sbt +test +publishLocal ${{ github.ref }}
-        run: ./sbt +test +publishLocal
+      - name: sbt test + publishLocal (sbt 1.x / Scala 2.12)
+        run: ./sbt test publishLocal
+      - name: sbt test + publishLocal (sbt 2.x / Scala 3)
+        # sbt 2.x's Scala 3 compiler bridge is built for Java 17+, so the sbt 2.x axis runs only on
+        # Java 17+. The sbt 1.x axis above still covers Java 8 and 11.
+        if: matrix.java != '8' && matrix.java != '11'
+        run: ./sbt ++3.8.4 test publishLocal
 
   ci:
     if: always()
