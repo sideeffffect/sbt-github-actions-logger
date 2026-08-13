@@ -28,10 +28,3 @@ scalacOptions ++= Seq(
 )
 
 libraryDependencies += "org.scalameta" %% "munit" % "1.1.1" % Test
-
-// TEMPORARY: this project dogfoods the *released* sbt-github-actions-logger, and releases up to and
-// including 1.0.0 still swallow the test result (the bug this PR fixes at the source), which would
-// make the CI `test` step pass even on a failing test. Restore sbt's default result logger so our
-// own CI gates correctly. Remove this once the dogfooded version is bumped to a release that
-// contains this fix.
-Test / test / testResultLogger := sbt.TestResultLogger.SilentWhenNoTests
