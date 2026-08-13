@@ -33,4 +33,8 @@ scalacOptions ++= Seq(
   "-Xfatal-warnings",
 )
 
+// ...but not for Scaladoc: its `[[...]]` cross-reference resolution is flaky (e.g. it can't link Java
+// types such as xsbti.Problem), and such warnings must not fail `doc` / `publishLocal` / a release.
+Compile / doc / scalacOptions := (Compile / scalacOptions).value.filterNot(_ == "-Xfatal-warnings")
+
 libraryDependencies += "org.scalameta" %% "munit" % "1.1.1" % Test
