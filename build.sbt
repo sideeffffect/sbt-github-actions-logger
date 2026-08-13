@@ -25,6 +25,9 @@ scalacOptions ++= Seq(
   "-deprecation",
   "-feature",
   "-unchecked",
+  // `extraLoggers` was deprecated in sbt 1.4 without a non-deprecated replacement, but it is the
+  // only sbt 1.x hook for injecting our logger, so silence just that one deprecation.
+  "-Wconf:cat=deprecation&msg=extraLoggers:silent",
 )
 
 libraryDependencies += "org.scalameta" %% "munit" % "1.1.1" % Test

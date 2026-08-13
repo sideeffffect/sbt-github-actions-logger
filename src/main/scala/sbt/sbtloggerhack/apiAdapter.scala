@@ -43,8 +43,8 @@ object apiAdapter {
 
   def reporterSettings(tcLogAppender: GHALogAppender): Def.Setting[_] = {
     import sbt.Keys.compile
-    Unhide.compilerReporter in compile := {
-      val defaultReporter = (Unhide.compilerReporter in compile).value
+    compile / Unhide.compilerReporter := {
+      val defaultReporter = (compile / Unhide.compilerReporter).value
       new GHACompilerReporter(defaultReporter)
     }
   }
