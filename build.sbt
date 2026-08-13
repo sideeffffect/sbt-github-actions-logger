@@ -28,3 +28,9 @@ scalacOptions ++= Seq(
 )
 
 libraryDependencies += "org.scalameta" %% "munit" % "1.1.1" % Test
+
+// This project dogfoods sbt-github-actions-logger, which (when running inside GitHub Actions)
+// replaces the test-result logger with a no-op so a failed suite doesn't also print a bare
+// "exit code 1". For our own build we want a failed test to fail the build, so restore sbt's
+// default result logger, which fails the `test` task on any test failure.
+Test / test / testResultLogger := sbt.TestResultLogger.SilentWhenNoTests

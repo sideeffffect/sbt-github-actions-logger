@@ -19,8 +19,8 @@ jobs:
           distribution: 'temurin'
           java-version: ${{ matrix.java }}
           cache: 'sbt'
-      - name: sbt publishLocal ${{ github.ref }}
-        run: ./sbt publishLocal
+      - name: sbt test publishLocal ${{ github.ref }}
+        run: ./sbt test publishLocal
 
   ci:
     if: always()
